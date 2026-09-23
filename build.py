@@ -7,9 +7,13 @@ import shutil
 from pathlib import Path
 from argparse import ArgumentParser
 
+if sys.platform == 'win32':
+    EXE = '.exe'
+else:
+    EXE = ''
 
 def initialize():
-    global ANDROID_HOME, ANDROID_NDK_HOME, PLATFORM, CMAKE_TOOLCHAIN_FILE, BUILD_DIR, OUTPUT_DIR
+    global ANDROID_HOME, ANDROID_NDK_HOME, PLATFORM, CMAKE_TOOLCHAIN_FILE, BUILD_DIR, OUTPUT_DIR, NDK_BIN
     ANDROID_HOME = os.getenv('ANDROID_HOME')
     if ANDROID_HOME is None:
         ANDROID_HOME = os.getenv('ANDROID_SDK_ROOT')
@@ -34,6 +38,7 @@ def initialize():
     CMAKE_TOOLCHAIN_FILE = ANDROID_NDK_HOME / 'build/cmake/android.toolchain.cmake'
     BUILD_DIR = Path("./my_build").absolute()
     OUTPUT_DIR = Path("./output").absolute()
+    NDK_BIN = next(ANDROID_NDK_HOME.glob("toolchains/llvm/prebuilt/*/bin"))
 
 
 initialize()
@@ -102,6 +107,7 @@ def build_target(target, abi='arm64-v8a', plat=PLATFORM, build_type="Debug", lib
         target = f'lib{target}.so'
     output = output_dir / target
     print('Build output', output)
+    exec_cmd([NDK_BIN / f'llvm-strip{EXE}', output, '-o', output_dir / f'{target}.stripped'])
     return output
 
 

@@ -1,3 +1,7 @@
+#include <cstdlib>
+#include <fcntl.h>
+#include <unistd.h>
+
 #include <binder/IServiceManager.h>
 #include <binder/IBinder.h>
 #include <utils/String8.h>
@@ -32,6 +36,12 @@ int main() {
     logging::setPrintEnabled(true);
 #endif
     ProcessState::self()->startThreadPool();
+
+    int controller_fd = -1;
+    if (auto e = getenv("KSU_WAITSYS_FD"); e) {
+        controller_fd = strtol(e, nullptr, 0);
+        LOGD("controller fd %d", controller_fd);
+    }
 
     auto sm = android::defaultServiceManager();
 
@@ -80,13 +90,20 @@ int main() {
         }
     }
 
+    if (controller_fd >= 0) {
+        char buf = 1;
+        if (TEMP_FAILURE_RETRY(write(controller_fd, &buf, sizeof(buf))) != 1) {
+            PLOGE("write 1");
+        }
+    }
+
     LOGD("collected %zu services, waiting ...", ss_services.size());
 
     {
         std::unique_lock lk{ss_services_mtx};
         cv.wait(lk, [&]{ return am_died; });
 
-        LOGI("system_server died");
+        LOGI("am died");
 
         int try_count = 0;
         for (;;) {
@@ -111,6 +128,12 @@ int main() {
         LOGI("all services are removed from ServiceManager (tried %d)", try_count);
     }
 
+    if (controller_fd >= 0) {
+        char buf = 2;
+        if (TEMP_FAILURE_RETRY(write(controller_fd, &buf, sizeof(buf))) != 1) {
+            PLOGE("write 2");
+        }
+    }
 
     return 0;
 }

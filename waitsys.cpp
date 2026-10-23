@@ -82,6 +82,7 @@ int main() {
     pid_t pid;
     for (size_t i = 0; i < N; i++) {
         auto b = sm->checkService(services[i]);
+        if (!b) continue;
         status = b->getDebugPid(&pid);
         if (status != OK) {
             LOGE("could not get pid of service %s: %d", to_string(services[i]).c_str(), status);
